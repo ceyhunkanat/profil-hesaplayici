@@ -11,43 +11,65 @@
     button { padding: 10px 20px; background: #4caf50; border: none; border-radius:4px; color:#fff; cursor:pointer; }
     button:hover { background: #45a049; }
     pre { background: #1e1e1e; padding:15px; border-radius:5px; white-space:pre-wrap; }
+    #addRow { background: #2196f3; margin-left: 10px; }
+    #addRow:hover { background: #1976d2; }
   </style>
 </head>
 <body>
   <h1>Çerçeve Profil Hesaplayıcı</h1>
   <div id="inputs">
+    <!-- İlk 4 alan sabit olarak eklendi -->
     <div class="row">
-      <input type="number" id="w1" placeholder="En 1">
-      <input type="number" id="h1" placeholder="Boy 1">
-      <input type="number" id="c1" placeholder="Adet 1">
+      <input type="number" placeholder="En 1">
+      <input type="number" placeholder="Boy 1">
+      <input type="number" placeholder="Adet 1">
     </div>
     <div class="row">
-      <input type="number" id="w2" placeholder="En 2">
-      <input type="number" id="h2" placeholder="Boy 2">
-      <input type="number" id="c2" placeholder="Adet 2">
+      <input type="number" placeholder="En 2">
+      <input type="number" placeholder="Boy 2">
+      <input type="number" placeholder="Adet 2">
     </div>
     <div class="row">
-      <input type="number" id="w3" placeholder="En 3">
-      <input type="number" id="h3" placeholder="Boy 3">
-      <input type="number" id="c3" placeholder="Adet 3">
+      <input type="number" placeholder="En 3">
+      <input type="number" placeholder="Boy 3">
+      <input type="number" placeholder="Adet 3">
     </div>
     <div class="row">
-      <input type="number" id="w4" placeholder="En 4">
-      <input type="number" id="h4" placeholder="Boy 4">
-      <input type="number" id="c4" placeholder="Adet 4">
+      <input type="number" placeholder="En 4">
+      <input type="number" placeholder="Boy 4">
+      <input type="number" placeholder="Adet 4">
     </div>
   </div>
+
   <button id="calc">Hesapla</button>
+  <button id="addRow">+</button>
   <pre id="out"></pre>
 
   <script>
+    const inputsDiv = document.getElementById('inputs');
+    let rowCount = 4;
+
+    document.getElementById('addRow').addEventListener('click', () => {
+      rowCount++;
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = `
+        <input type="number" placeholder="En ${rowCount}">
+        <input type="number" placeholder="Boy ${rowCount}">
+        <input type="number" placeholder="Adet ${rowCount}">
+      `;
+      inputsDiv.appendChild(row);
+    });
+
     document.getElementById('calc').addEventListener('click', () => {
-      const cuts = [], PAY=0.4, CAP=600, ED=4, BD=8;
-      for(let i=1;i<=4;i++){
-        const w=+document.getElementById('w'+i).value,
-              h=+document.getElementById('h'+i).value,
-              n=+document.getElementById('c'+i).value;
-        if(w&&h&&n>0){
+      const PAY=0.4, CAP=600, ED=4, BD=8;
+      const cuts = [];
+      const rows = document.querySelectorAll('#inputs .row');
+
+      rows.forEach(row => {
+        const [wEl, hEl, cEl] = row.querySelectorAll('input');
+        const w = +wEl.value, h = +hEl.value, n = +cEl.value;
+        if(w && h && n > 0){
           const wVis=w-ED, hVis=h-BD,
                 wReal=+(wVis+PAY).toFixed(1),
                 hReal=+(hVis+PAY).toFixed(1);
@@ -58,41 +80,44 @@
             cuts.push({vis:hVis,real:hReal});
           }
         }
-      }
+      });
+
       if(!cuts.length){
         out.innerText='Lütfen değer girin!';
         return;
       }
-      // frequency
-      const freq={};
-      cuts.forEach(c=>freq[c.vis]=(freq[c.vis]||0)+1);
-      // best-fit decreasing
-      cuts.sort((a,b)=>b.real-a.real);
-      const bins=[];
-      cuts.forEach(c=>{
-        let best=-1, minRem=Infinity;
-        bins.forEach((b,i)=>{
-          if(b.rem>=c.real && b.rem-c.real<minRem){
-            minRem=b.rem-c.real; best=i;
+
+      const freq = {};
+      cuts.forEach(c => freq[c.vis] = (freq[c.vis] || 0) + 1);
+      cuts.sort((a,b) => b.real - a.real);
+
+      const bins = [];
+      cuts.forEach(c => {
+        let best = -1, minRem = Infinity;
+        bins.forEach((b,i) => {
+          if(b.rem >= c.real && b.rem - c.real < minRem){
+            minRem = b.rem - c.real; best = i;
           }
         });
-        if(best>=0){
+        if(best >= 0){
           bins[best].segs.push(c.vis);
-          bins[best].rem=+(bins[best].rem-c.real).toFixed(1);
+          bins[best].rem = +(bins[best].rem - c.real).toFixed(1);
         } else {
-          bins.push({segs:[c.vis],rem:+(CAP-c.real).toFixed(1)});
+          bins.push({segs:[c.vis], rem:+(CAP - c.real).toFixed(1)});
         }
       });
-      // output
-      let text='=== Kesim Miktarları ===\n';
-      Object.keys(freq).sort((a,b)=>b-a).forEach(k=>{
-        text+=`• ${k} cm: ${freq[k]} adet\n`;
+
+      let text = '=== Kesim Miktarları ===\n';
+      Object.keys(freq).sort((a,b)=>b-a).forEach(k => {
+        text += `• ${k} cm: ${freq[k]} adet\n`;
       });
-      text+=`\nToplam profil: ${bins.length} adet\n\n`;
-      bins.forEach((b,i)=>{
-        text+=`${i+1}. profil: ${b.segs.join(', ')} cm  |  artan: ${b.rem} cm\n`;
+
+      text += `\nToplam profil: ${bins.length} adet\n\n`;
+      bins.forEach((b,i) => {
+        text += `${i+1}. profil: ${b.segs.join(', ')} cm  |  artan: ${b.rem} cm\n`;
       });
-      document.getElementById('out').innerText=text;
+
+      document.getElementById('out').innerText = text;
     });
   </script>
 </body>
