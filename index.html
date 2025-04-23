@@ -18,27 +18,10 @@
 <body>
   <h2>Çerçeve Profil Hesaplayıcı</h2>
   <div id="inputs">
-    <!-- İlk 4 alan sabit olarak eklendi -->
-    <div class="row">
-      <input type="number" placeholder="En 1">
-      <input type="number" placeholder="Boy 1">
-      <input type="number" placeholder="Adet 1">
-    </div>
-    <div class="row">
-      <input type="number" placeholder="En 2">
-      <input type="number" placeholder="Boy 2">
-      <input type="number" placeholder="Adet 2">
-    </div>
-    <div class="row">
-      <input type="number" placeholder="En 3">
-      <input type="number" placeholder="Boy 3">
-      <input type="number" placeholder="Adet 3">
-    </div>
-    <div class="row">
-      <input type="number" placeholder="En 4">
-      <input type="number" placeholder="Boy 4">
-      <input type="number" placeholder="Adet 4">
-    </div>
+    <div class="row"><input type="number" placeholder="En 1"><input type="number" placeholder="Boy 1"><input type="number" placeholder="Adet 1"></div>
+    <div class="row"><input type="number" placeholder="En 2"><input type="number" placeholder="Boy 2"><input type="number" placeholder="Adet 2"></div>
+    <div class="row"><input type="number" placeholder="En 3"><input type="number" placeholder="Boy 3"><input type="number" placeholder="Adet 3"></div>
+    <div class="row"><input type="number" placeholder="En 4"><input type="number" placeholder="Boy 4"><input type="number" placeholder="Adet 4"></div>
   </div>
 
   <button id="calc">Hesapla</button>
@@ -62,59 +45,76 @@
     });
 
     document.getElementById('calc').addEventListener('click', () => {
-      const PAY=0.4, CAP=600, ED=4, BD=8;
+      const PAY = 0.4, CAP = 600, ED = 4, BD = 8;
       const cuts = [];
       const rows = document.querySelectorAll('#inputs .row');
 
       rows.forEach(row => {
         const [wEl, hEl, cEl] = row.querySelectorAll('input');
         const w = +wEl.value, h = +hEl.value, n = +cEl.value;
-        if(w && h && n > 0){
-          const wVis=w-ED, hVis=h-BD,
-                wReal=+(wVis+PAY).toFixed(1),
-                hReal=+(hVis+PAY).toFixed(1);
-          for(let j=0;j<n;j++){
-            cuts.push({vis:wVis,real:wReal});
-            cuts.push({vis:wVis,real:wReal});
-            cuts.push({vis:hVis,real:hReal});
-            cuts.push({vis:hVis,real:hReal});
+        if (w && h && n > 0) {
+          const wVis = w - ED, hVis = h - BD,
+                wReal = +(wVis + PAY).toFixed(1),
+                hReal = +(hVis + PAY).toFixed(1);
+          for (let j = 0; j < n; j++) {
+            cuts.push({ vis: wVis, real: wReal });
+            cuts.push({ vis: wVis, real: wReal });
+            cuts.push({ vis: hVis, real: hReal });
+            cuts.push({ vis: hVis, real: hReal });
           }
         }
       });
 
-      if(!cuts.length){
-        out.innerText='Lütfen değer girin!';
+      if (!cuts.length) {
+        out.innerText = 'Lütfen değer girin!';
         return;
       }
 
-      const freq = {};
-      cuts.forEach(c => freq[c.vis] = (freq[c.vis] || 0) + 1);
-      cuts.sort((a,b) => b.real - a.real);
+      const visCounts = {};
+      const groupedCuts = {};
+
+      cuts.forEach(cut => {
+        visCounts[cut.vis] = (visCounts[cut.vis] || 0) + 1;
+        const key = cut.real;
+        if (!groupedCuts[key]) groupedCuts[key] = { real: cut.real, vis: cut.vis, count: 0 };
+        groupedCuts[key].count++;
+      });
+
+      const flatCuts = Object.values(groupedCuts).flatMap(item =>
+        Array(item.count).fill({ vis: item.vis, real: item.real })
+      );
+
+      flatCuts.sort((a, b) => b.real - a.real);
 
       const bins = [];
-      cuts.forEach(c => {
+      flatCuts.forEach(c => {
         let best = -1, minRem = Infinity;
-        bins.forEach((b,i) => {
-          if(b.rem >= c.real && b.rem - c.real < minRem){
+        bins.forEach((b, i) => {
+          if (b.rem >= c.real && b.rem - c.real < minRem) {
             minRem = b.rem - c.real; best = i;
           }
         });
-        if(best >= 0){
+        if (best >= 0) {
           bins[best].segs.push(c.vis);
           bins[best].rem = +(bins[best].rem - c.real).toFixed(1);
         } else {
-          bins.push({segs:[c.vis], rem:+(CAP - c.real).toFixed(1)});
+          bins.push({ segs: [c.vis], rem: +(CAP - c.real).toFixed(1) });
         }
       });
 
       let text = '=== Kesim Miktarları ===\n';
-      Object.keys(freq).sort((a,b)=>b-a).forEach(k => {
-        text += `• ${k} cm: ${freq[k]} adet\n`;
+      Object.keys(visCounts).sort((a, b) => b - a).forEach(k => {
+        text += `• ${k} cm: ${visCounts[k]} adet\n`;
       });
 
       text += `\nToplam profil: ${bins.length} adet\n\n`;
-      bins.forEach((b,i) => {
-        text += `${i+1}. profil: ${b.segs.join(', ')} cm  |  artan: ${b.rem} cm\n`;
+      bins.forEach((b, i) => {
+        const counts = b.segs.reduce((acc, val) => {
+          acc[val] = (acc[val] || 0) + 1;
+          return acc;
+        }, {});
+        const summary = Object.entries(counts).map(([len, count]) => `${len}×${count}`).join(', ');
+        text += `${i + 1}. profil: ${summary} cm  |  artan: ${b.rem} cm\n`;
       });
 
       document.getElementById('out').innerText = text;
