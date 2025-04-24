@@ -13,6 +13,7 @@
     pre { background: #1e1e1e; padding:15px; border-radius:5px; white-space:pre-wrap; }
     #addRow { background: #2196f3; margin-left: 10px; }
     #addRow:hover { background: #1976d2; }
+    .floating-buttons { position: fixed; bottom: 20px; right: 20px; display: flex; gap: 10px; }
   </style>
 </head>
 <body>
@@ -27,6 +28,11 @@
   <button id="calc">Hesapla</button>
   <button id="addRow">+</button>
   <pre id="out"></pre>
+
+  <div class="floating-buttons">
+    <button onclick="printResult()">Yazdır</button>
+    <button onclick="saveAsPDF()">PDF Kaydet</button>
+  </div>
 
   <script>
     const PAY = 0.4, CAP = 600, ED = 4, BD = 8;
@@ -97,7 +103,6 @@
         }
       });
 
-      // Gruplanmış kesim listesi
       let text = '=== Kesim Listesi ===\n';
       const grouped = {};
       cuts.forEach(cut => {
@@ -107,7 +112,8 @@
         text += `${vis} cm → ${count} adet\n`;
       });
 
-      text += `\nToplam profil: ${bins.length} adet\n\n`;
+      text += `\nToplam profil: ${bins.length} adet ( 6 metre )\n\n`;
+
       bins.forEach((b, i) => {
         const summary = b.segs.map(x => `${x}`).join(', ');
         text += `${i + 1}. profil: [${summary}] | artan: ${b.rem} cm\n`;
@@ -115,6 +121,49 @@
 
       document.getElementById('out').innerText = text;
     });
+
+    function createPrintableContent() {
+      const content = document.getElementById('out').innerText;
+      return `
+        <html>
+        <head>
+          <title>Çıktı</title>
+          <style>
+            body { background: white; color: black; font-family: Arial, sans-serif; padding: 20px; }
+            pre { white-space: pre-wrap; }
+          </style>
+        </head>
+        <body>
+          <pre>${content}</pre>
+        </body>
+        </html>
+      `;
+    }
+
+    function printResult() {
+      const w = window.open('', '_blank');
+      w.document.write(createPrintableContent());
+      w.document.close();
+      w.focus();
+      w.print();
+    }
+
+    function saveAsPDF() {
+      const printableContent = createPrintableContent();
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+      const doc = iframe.contentWindow.document;
+      doc.open();
+      doc.write(printableContent);
+      doc.close();
+
+      iframe.onload = () => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        document.body.removeChild(iframe);
+      };
+    }
   </script>
 </body>
 </html>
