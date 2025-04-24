@@ -76,11 +76,10 @@
 
         bins.forEach((bin, i) => {
           if (bin.rem >= cut.real) {
-            // Lookahead: bir sonraki kesimi de bu bin'e sığdırabilir miyiz?
             const nextCut = cuts[index + 1];
             let waste = bin.rem - cut.real;
             if (nextCut && (bin.rem - cut.real) >= nextCut.real) {
-              waste -= nextCut.real; // bu bin hem bu kesimi hem de sonraki kesimi alabiliyor
+              waste -= nextCut.real;
             }
             if (waste < minWaste) {
               minWaste = waste;
@@ -98,8 +97,15 @@
         }
       });
 
+      // Gruplanmış kesim listesi
       let text = '=== Kesim Listesi ===\n';
-      cuts.forEach((c, i) => text += `${i + 1}. kesim: ${c.vis} cm (gerçek: ${c.real} cm)\n`);
+      const grouped = {};
+      cuts.forEach(cut => {
+        grouped[cut.vis] = (grouped[cut.vis] || 0) + 1;
+      });
+      Object.entries(grouped).sort((a, b) => b[0] - a[0]).forEach(([vis, count]) => {
+        text += `${vis} cm → ${count} adet\n`;
+      });
 
       text += `\nToplam profil: ${bins.length} adet\n\n`;
       bins.forEach((b, i) => {
