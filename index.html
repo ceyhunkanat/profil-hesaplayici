@@ -29,6 +29,7 @@
   <pre id="out"></pre>
 
   <script>
+    const PAY = 0.4, CAP = 600, ED = 4, BD = 8;
     const inputsDiv = document.getElementById('inputs');
     let rowCount = 4;
 
@@ -36,27 +37,22 @@
       rowCount++;
       const row = document.createElement('div');
       row.className = 'row';
-      row.innerHTML = `
-        <input type="number" placeholder="En ${rowCount}">
-        <input type="number" placeholder="Boy ${rowCount}">
-        <input type="number" placeholder="Adet ${rowCount}">
-      `;
+      row.innerHTML = `<input type="number" placeholder="En ${rowCount}"><input type="number" placeholder="Boy ${rowCount}"><input type="number" placeholder="Adet ${rowCount}">`;
       inputsDiv.appendChild(row);
     });
 
     document.getElementById('calc').addEventListener('click', () => {
-      const PAY = 0.4, CAP = 600, ED = 4, BD = 8;
+      const rows = document.querySelectorAll('.row');
       const cuts = [];
-      const rows = document.querySelectorAll('#inputs .row');
 
       rows.forEach(row => {
-        const [wEl, hEl, cEl] = row.querySelectorAll('input');
-        const w = +wEl.value, h = +hEl.value, n = +cEl.value;
+        const [wEl, hEl, nEl] = row.querySelectorAll('input');
+        const w = +wEl.value, h = +hEl.value, n = +nEl.value;
         if (w && h && n > 0) {
-          const wVis = w - ED, hVis = h - BD,
-                wReal = +(wVis + PAY).toFixed(1),
-                hReal = +(hVis + PAY).toFixed(1);
-          for (let j = 0; j < n; j++) {
+          const wVis = w - ED, hVis = h - BD;
+          const wReal = +(wVis + PAY).toFixed(1);
+          const hReal = +(hVis + PAY).toFixed(1);
+          for (let i = 0; i < n; i++) {
             cuts.push({ vis: wVis, real: wReal });
             cuts.push({ vis: wVis, real: wReal });
             cuts.push({ vis: hVis, real: hReal });
@@ -66,55 +62,49 @@
       });
 
       if (!cuts.length) {
-        out.innerText = 'Lütfen değer girin!';
+        document.getElementById('out').innerText = 'Lütfen değer girin!';
         return;
       }
 
-      const visCounts = {};
-      const groupedCuts = {};
-
-      cuts.forEach(cut => {
-        visCounts[cut.vis] = (visCounts[cut.vis] || 0) + 1;
-        const key = cut.real;
-        if (!groupedCuts[key]) groupedCuts[key] = { real: cut.real, vis: cut.vis, count: 0 };
-        groupedCuts[key].count++;
-      });
-
-      const flatCuts = Object.values(groupedCuts).flatMap(item =>
-        Array(item.count).fill({ vis: item.vis, real: item.real })
-      );
-
-      flatCuts.sort((a, b) => b.real - a.real);
+      cuts.sort((a, b) => b.real - a.real);
 
       const bins = [];
-      flatCuts.forEach(c => {
-        let best = -1, minRem = Infinity;
-        bins.forEach((b, i) => {
-          if (b.rem >= c.real && b.rem - c.real < minRem) {
-            minRem = b.rem - c.real; best = i;
+
+      cuts.forEach((cut, index) => {
+        let bestBinIndex = -1;
+        let minWaste = Infinity;
+
+        bins.forEach((bin, i) => {
+          if (bin.rem >= cut.real) {
+            // Lookahead: bir sonraki kesimi de bu bin'e sığdırabilir miyiz?
+            const nextCut = cuts[index + 1];
+            let waste = bin.rem - cut.real;
+            if (nextCut && (bin.rem - cut.real) >= nextCut.real) {
+              waste -= nextCut.real; // bu bin hem bu kesimi hem de sonraki kesimi alabiliyor
+            }
+            if (waste < minWaste) {
+              minWaste = waste;
+              bestBinIndex = i;
+            }
           }
         });
-        if (best >= 0) {
-          bins[best].segs.push(c.vis);
-          bins[best].rem = +(bins[best].rem - c.real).toFixed(1);
+
+        if (bestBinIndex >= 0) {
+          const bin = bins[bestBinIndex];
+          bin.segs.push(cut.vis);
+          bin.rem = +(bin.rem - cut.real).toFixed(1);
         } else {
-          bins.push({ segs: [c.vis], rem: +(CAP - c.real).toFixed(1) });
+          bins.push({ segs: [cut.vis], rem: +(CAP - cut.real).toFixed(1) });
         }
       });
 
-      let text = '=== Kesim Miktarları ===\n';
-      Object.keys(visCounts).sort((a, b) => b - a).forEach(k => {
-        text += `• ${k} cm: ${visCounts[k]} adet\n`;
-      });
+      let text = '=== Kesim Listesi ===\n';
+      cuts.forEach((c, i) => text += `${i + 1}. kesim: ${c.vis} cm (gerçek: ${c.real} cm)\n`);
 
       text += `\nToplam profil: ${bins.length} adet\n\n`;
       bins.forEach((b, i) => {
-        const counts = b.segs.reduce((acc, val) => {
-          acc[val] = (acc[val] || 0) + 1;
-          return acc;
-        }, {});
-        const summary = Object.entries(counts).map(([len, count]) => `${len}×${count}`).join(', ');
-        text += `${i + 1}. profil: ${summary} cm  |  artan: ${b.rem} cm\n`;
+        const summary = b.segs.map(x => `${x}`).join(', ');
+        text += `${i + 1}. profil: [${summary}] | artan: ${b.rem} cm\n`;
       });
 
       document.getElementById('out').innerText = text;
